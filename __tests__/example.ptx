@@ -1,0 +1,246 @@
+<section xml:id="sec-refactoring-example-grade-reporter" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>A refactoring example: Grade reporter</title>
+  <introduction>
+    <p>In this section we will do an initial refactoring of the little grade-report program we worked on earlier. For reference, here is the code that we ended up with:</p>
+    <!-- (TODO: link to section) -->
+    <program language="java">
+      <input>private static String processGrades(Scanner scanner) {
+  int n = 0;    // number of courses
+  double t = 0.00; // total gpa
+  while (scanner.hasNext()) {
+    scanner.next();             // The course prefix
+    scanner.next();             // The course number
+    String lg = scanner.next(); // The letter grade
+    if (!lg.equals("W")) n += 1;
+    switch (lg) {
+      case "A":
+          t += 4.00;
+          break;
+      case "A-":
+          t += 3.67;
+          break;
+      case "B+":
+          t += 3.33;
+          break;
+      /// A few more cases here
+      case "D":
+          t += 1.00;
+          break;
+      case "D-":
+          t += 0.67;
+          break;
+      default:
+    }
+  }
+  double gpa = n == 0 ? 0.00 : t / n;
+  return String.format("Courses: %d%nGPA: %.2f%n", n, gpa);
+}
+      </input>
+    </program>
+    <p>There's a whole lot of cleanup that we need to do to this function. We will focus on two items first and foremost:
+<ul>
+  <li>Better names for the local variables (renaming refactoring)</li>
+  <li>Extracting a lot of methods to provide more explanatory names for parts of the algorithm.</li>
+</ul>
+
+    </p>
+
+  </introduction>
+  <subsection xml:id="subsec-cleaning-up-variable-names">
+    <title>Cleaning up variable names</title>
+    <p>Let's start with variable names. <c>n</c> was supposed to stand for the number of courses. We could use <c>numberOfCourses</c>, but that's a bit long. <c>courseNo</c> sends the wrong message (the number of the course as opposed to the number of courses). I will go with <c>numCourses</c>. <c>num</c> is a clear enough abbreviation for number of courses. Therefore I'll perform a rename refactoring on <c>n</c> and turn it into <c>numCourses</c>. Then I will remove the now unnecessary comment next to the declaration.</p>
+    <p>Next we have <c>t</c>. That's the total points allocated from adding up all the course grade points. I will rename it to <c>totalPoints</c> and remove its comment. Then we have <c>lg</c>, which stands for "letter grade", so I will stop trying to be cute and just say <c>letterGrade</c> instead, and remove the comment.</p>
+    <p>Lastly we have <c>gpa</c>. That sounds like a fine enough name for it. I could rename it to <c>gradePointAverage</c>, but I think we can assume everyone is familiar with the abbreviation. So at this point here is how our code looks:
+</p>
+    <program language="java">
+      <input>private static String processGrades(Scanner scanner) {
+  int numCourses = 0;
+  double totalPoints = 0.00;
+  while (scanner.hasNext()) {
+    scanner.next();   // The course prefix
+    scanner.next();   // The course number
+    String letterGrade = scanner.next();
+    if (!letterGrade.equals("W")) numCourses += 1;
+    switch (letterGrade) {
+      case "A":
+        totalPoints += 4.00;
+        break;
+      case "A-":
+        totalPoints += 3.67;
+        break;
+      case "B+":
+        totalPoints += 3.33;
+        break;
+      // More cases here
+      case "D+":
+        totalPoints += 1.33;
+        break;
+      case "D":
+        totalPoints += 1.00;
+        break;
+      case "D-":
+        totalPoints += 0.67;
+        break;
+      default:
+    }
+  }
+  double gpa = numCourses == 0 ? 0.00 : totalPoints / numCourses;
+  return String.format("Courses: %d%nGPA: %.2f%numCourses", numCourses, gpa);
+}
+      </input>
+    </program>
+  </subsection>
+  <subsection xml:id="subsec-introducing-explanatory-methods">
+    <title>Introducing explanatory methods</title>
+    <p>So far so good. Still, a very long function, I would really like to break it up into smaller pieces. But the next thing I want to do is introduce some explanatory methods for steps that I took, especially steps that I felt the need to document with a comment next to them.</p>
+    <p>Let's start with the first <c>scanner.next();</c>. That step is meant to read the course prefix. I will extract that line into a method called <c>readPrefix</c>, and remove the comment.</p>
+    <p>Now right after it there is another <c>scanner.next();</c>. Should I use <c>readPrefix</c> twice? No, even though this is the same piece of code, it fulfills a very different function, namely reading the course number. Therefore I will extract it to a method called <c>readCourseNo</c>. This is an important lesson:</p>
+    <blockquote>
+      <p>Before removing code duplication by using an extracted method, make sure both pieces of code serve the same purpose in your code, and that they are not the same by accident.</p>
+    </blockquote>
+    <p>Lastly, we have one more <c>scanner.next</c> on the right-hand-side of the <c>letterGrade</c> initialization. I will extract that to <c>readLetterGrade</c>, and that one returns a string.</p>
+    <p>Thinking about it more, the three lines of code I just extracted into three separate methods actually make sense as a whole: Read the next line and return that letter grade. I will therefore group them up and extract a method from them, called <c>processNextGradeRow</c>. Here's how the top of my function will look now:</p>
+    <program language="java">
+      <input>private static String processGrades(Scanner scanner) {
+  int numCourses = 0;
+  double totalPoints = 0.00;
+  while (scanner.hasNext()) {
+    String letterGrade = processNextGradeRow(scanner);
+    if (!letterGrade.equals("W")) numCourses += 1;
+      </input>
+    </program>
+    <p>I acquired four new methods in the process, which I will place right below this method. This follows something called the <term>stepdown rule</term>, which introduces the big ideas early on and then elaborates them further and further as you go down the file, with the helper methods lined up in a natural order: To find the details about a method you look at the methods following it.</p>
+    <program language="java">
+      <input>private static String processNextGradeRow(Scanner scanner) {
+  readPrefix(scanner);
+  readCourseNo(scanner);
+  String letterGrade = readLetterGrade(scanner);
+  return letterGrade;
+}
+
+private static String readLetterGrade(Scanner scanner) {
+  return scanner.next();
+}
+
+private static void readCourseNo(Scanner scanner) {
+  scanner.next();
+}
+
+private static void readPrefix(Scanner scanner) {
+  scanner.next();
+}
+      </input>
+    </program>
+    <p>When I do that, I notice that my otherwise smart IDE created a local variable <c>letterGrade</c> in my <c>processNextGradeRow</c> method. That seems to me largely useless right now, so I will <em>inline</em> it and immediately return <c>readLetterGrade(scanner);</c>. Your IDE may even suggest that.</p>
+  </subsection>
+  <subsection xml:id="subsec-cleaning-up-the-switch-statement">
+    <title>Cleaning up the switch statement</title>
+    <p>We are far from done. Next I want to tackle that big switch statement. I would love to extract that into a separate method, perhaps something like "updateTotalForLetterGrade". Wordy, but remember that the smaller the scope of a function the longer its name can be, to explain what the function does to the few places it is needed. I need to be careful with it, as the function needs to use the <c>totalPoints</c> value and also return it. So the whole switch statement will end up being replaced with something like:</p>
+    <program language="java">
+      <input>  totalPoints = updateTotalForLetterGrade(totalPoints, letterGrade);
+      </input>
+    </program>
+    <p>I will move this new method below the other methods I created earlier, since it appears later in the original function.</p>
+    <p>Now something bugs me. It feels weird to me that this new function needs to take in the <c>totalPoints</c> variable. But it needs to do so because of the <c>totalPoints += ...</c> lines. Thinking about it a bit, perhaps it would be nicer if I made this function return the <c>points</c> that the grade is worth, then do the addition back in the main function. I'll need to rename the function too of course, but first things first. Here is how the function looks now:</p>
+    <program language="java">
+      <input>private static double updateTotalForLetterGrade(double totalPoints, String letterGrade) {
+  switch (letterGrade) {
+    case "A":
+      totalPoints += 4.00;
+      break;
+    case "A-":
+      totalPoints += 3.67;
+      break;
+    // more cases
+    case "D":
+      totalPoints += 1.00;
+      break;
+    case "D-":
+      totalPoints += 0.67;
+      break;
+    default:
+  }
+  return totalPoints;
+}
+      </input>
+    </program>
+    <p>
+      I want to do this transition gradually, keeping the program running as much as possible. So I I will do it in small stages, at the end of each my program should be working:
+      <ol>
+        <li>Start by adding a <c>totalPoints += 0;</c> line in the <c>default</c> case.</li>
+        <li>Change all the <c>+</c> occurrences in the function body with <c>=</c>, change the <c>=</c> in the original call to this function to <c>+=</c>.</li>
+        <li>Replace all the <c>totalPoints = ...; ... break;</c> pairs of lines with a direct <c>return ...</c>. I don't need to be storing the values only to return them later, I can return them right away, and avoid the need for <c>break</c>. And I remove the <c>return totalPoints</c> line which is now unreachable.</li>
+        <li>Now I can rename this function to something like <c>pointsForLetterGrade</c>.</li>
+        <li>Next I eliminate the first parameter, <c>totalPoints</c>, which is no longer needed (and make sure to change the caller too).</li>
+        <li>I'll put the <c>return ...</c> lines on the same line as the corresponding <c>case ...</c>, and line them up vertically, I like how that reads.</li>
+      </ol>
+      So here is what we have left:
+    </p>
+    <program language="java">
+      <input>    private static double pointsForLetterGrade(String letterGrade) {
+    switch (letterGrade) {
+      case "A":  return 4.00;
+      case "A-": return 3.67;
+      case "B+": return 3.33;
+      case "B":  return 3;
+      case "B-": return 2.67;
+      case "C+": return 2.33;
+      case "C":  return 2;
+      case "C-": return 1.67;
+      case "D+": return 1.33;
+      case "D":  return 1.00;
+      case "D-": return 0.67;
+      default:   return 0;
+    }
+      </input>
+    </program>
+  </subsection>
+  <subsection xml:id="subsec-levels-of-abstraction">
+    <title>Levels of abstraction</title>
+    <p>So at this point the original function looks much simpler:</p>
+    <program language="java">
+      <input>private static String processGrades(Scanner scanner) {
+  int numCourses = 0;
+  double totalPoints = 0.00;
+  while (scanner.hasNext()) {
+    String letterGrade = processNextGradeRow(scanner);
+    if (!letterGrade.equals("W")) numCourses += 1;
+    totalPoints += pointsForLetterGrade(letterGrade);
+  }
+  double gpa = numCourses == 0 ? 0.00 : totalPoints / numCourses;
+  return String.format("Courses: %d%nGPA: %.2f%n", numCourses, gpa);
+}
+      </input>
+    </program>
+    <p>It's still a bit too long, but also seems to be a bit unbalanced in terms of the level of abstraction of the different parts of it. Some are more "high level" like <c>processNextGradeRow</c> or <c>pointsForLetterGrade</c>, and others are more "low level". In general we want to keep our function body at the same level of abstraction.</p>
+    <blockquote>
+      <p>Keep every part of the body of a function at the same <term>level of abstraction</term>.</p>
+    </blockquote>
+    <p>I will start with the <c>scanner.hasNext()</c> part. I will extract a method for it called <c>hasMoreEntries(scanner)</c>. It's not perfect but at least a bit better.</p>
+    <p>Next there is a line that update the number of courses. I don't like the lack of symmetry with the next line. I would like this line to also read: <c>numCourses += ...</c>. We can do that if we have a function that returns <c>0</c> or <c>1</c> depending on whether the course counts for credit or not. I will do that by first rewriting the line using a ternary:</p>
+    <program language="java">
+      <input>
+  numCourses += letterGrade.equals("W") ? 0 : 1;
+      </input>
+    </program>
+    <p>Now I will extract the right-hand-side to a function called <c>creditsForLetterGrade</c>.</p>
+    <p>Lastly, the last two lines are about calculating the gpa and then formatting the final result. I will extract each into methods <c>calculateGPA</c> and <c>formatResult</c>.</p>
+    <p>This looks quite nice to read now:</p>
+    <program language="java">
+      <input>
+private static String processGrades(Scanner scanner) {
+  int numCourses = 0;
+  double totalPoints = 0.00;
+  while (hasMoreEntries(scanner)) {
+    String letterGrade = processNextGradeRow(scanner);
+    numCourses += creditsForLetterGrade(letterGrade);
+    totalPoints += pointsForLetterGrade(letterGrade);
+  }
+  double gpa = calculateGPA(numCourses, totalPoints);
+  return formatResult(numCourses, gpa);
+}
+      </input>
+    </program>
+    <p>It still feels a bit too long, but without more major refactorings this is as far as we can go. It would be nice to extract the whole <c>while</c> loop into its own thing, or perhaps just its contents. Unfortunately that look changes <alert>2</alert> different things, <c>numCourses</c> and <c>totalPoints</c>. Since a method call can only affect the values of the caller's variables via its return value, and methods can only return one value, we cannot possibly change two things. We will learn later of a workaround, where we turn those two things into one thing. But this is a good place to stop for now.</p>
+  </subsection>
+</section>

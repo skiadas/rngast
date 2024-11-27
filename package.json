@@ -1,0 +1,42 @@
+{
+  "name": "rngast",
+  "version": "0.0.1",
+  "description": "unist AST and tools for Relax NG",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write src __tests__",
+    "format-check": "prettier -c src __tests__",
+    "lint": "eslint src __tests__",
+    "test": "vitest run --coverage"
+  },
+  "keywords": [
+    "unified",
+    "relaxng",
+    "ast"
+  ],
+  "author": "Haris Skiadas <cskiadas@gmail.com>",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@types/node": "^22.9.3",
+    "@types/xast": "^2.0.4",
+    "@vitest/coverage-istanbul": "^2.1.4",
+    "eslint": "^9.13.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.2",
+    "unist-util-inspect": "^8.1.0",
+    "vitest": "^2.1.4"
+  },
+  "dependencies": {
+    "unified": "^11.0.5",
+    "unist-util-select": "^5.1.0",
+    "unist-util-visit": "^5.0.0",
+    "xast-util-from-xml": "^4.0.0",
+    "xast-util-to-xml": "^4.0.0",
+    "xastscript": "^4.0.0"
+  }
+}
